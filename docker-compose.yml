@@ -1,0 +1,36 @@
+services:
+  check-rrhh:
+    image: alpine:latest
+    container_name: check-rrhh
+    command: /bin/sh -c "while ! nc -z host.docker.internal 8081; do sleep 1; done; tail -f /dev/null"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z host.docker.internal 8081"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  check-proyectos:
+    image: alpine:latest
+    container_name: check-proyectos
+    command: /bin/sh -c "while ! nc -z host.docker.internal 8082; do sleep 1; done; tail -f /dev/null"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z host.docker.internal 8082"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bff-service:
+    build: .
+    container_name: innovatech-bff
+    ports:
+      - "8080:8080"
+    environment:
+      - URL_MS_RECURSOS=http://host.docker.internal:8081/api/rrhh/empleados
+      - URL_MS_PROYECTOS=http://host.docker.internal:8082/api/proyectos
+    depends_on:
+      check-rrhh:
+        condition: service_healthy
+      check-proyectos:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
