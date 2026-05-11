@@ -69,7 +69,7 @@ Consulta simultáneamente la carga horaria calculada (MS Proyectos) y la identid
 ### Ejemplo de Solicitud
 
 ```http
-http://localhost:8080/api/dashboard/resumen?proyectoId=1&recursoId=120
+GET http://localhost:8080/api/dashboard/resumen?proyectoId=1&recursoId=120
 ``` 
 
 ---
