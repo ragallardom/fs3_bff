@@ -3,9 +3,8 @@ package cl.innovatech.bffservice.dto;
 import lombok.Data;
 
 @Data
-public class ProyectoDTO {
+public class RecursoDTO {
     private Long id;
     private String nombre;
-    private String estado;
-    private Integer totalHoras;
+    private String cargo;
 }
