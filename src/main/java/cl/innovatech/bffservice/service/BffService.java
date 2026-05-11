@@ -36,21 +36,33 @@ public class BffService {
                     .bodyToMono(RecursoDTO.class)
                     .onErrorResume(e -> Mono.just(new RecursoDTO()));
 
-            return Mono.zip(proyectoMono, recursoMono)
+            Mono<Double> capacidadMono = webClient.get()
+                    .uri(urlRecursos + "/" + recursoId + "/capacity")
+                    .retrieve()
+                    .bodyToMono(Double.class)
+                    .onErrorResume(e -> {
+                        System.err.println("Error al obtener capacidad MS-RRHH: " + e.getMessage());
+                        return Mono.just(0.0);
+                    });
+
+            return Mono.zip(proyectoMono, recursoMono, capacidadMono)
                     .map(tuple -> {
                         ProyectoDTO p = tuple.getT1();
                         RecursoDTO r = tuple.getT2();
+                        Double cap = tuple.getT3();
+
                         return ProyectoResumenDTO.builder()
-                                .nombreProyecto(p.getNombre() != null ? p.getNombre() : "No encontrado")
+                                .nombreProyecto(p.getNombre() != null ? p.getNombre() : "Proyecto no encontrado")
                                 .estadoProyecto(p.getEstado())
                                 .totalHoras(p.getTotalHoras())
                                 .nombreResponsable(r.getNombre() != null ? r.getNombre() : "Sin asignar")
                                 .cargoResponsable(r.getCargo())
+                                .capacidadResponsable(cap) // Inyección del dato dinámico
                                 .build();
                     })
                     .block();
         } catch (Exception e) {
-            System.err.println("Error en agregación BFF: " + e.getMessage());
+            System.err.println("Error crítico en la agregación del BFF: " + e.getMessage());
             throw e;
         }
     }
