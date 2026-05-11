@@ -17,4 +17,5 @@ public class ProyectoResumenDTO {
     private Integer totalHoras;
     private String nombreResponsable;
     private String cargoResponsable;
+    private Double capacidadResponsable;
 }
