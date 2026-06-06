@@ -1,5 +1,6 @@
 package cl.innovatech.bffservice.service;
 
+import cl.innovatech.bffservice.dto.AsignacionDTO;
 import cl.innovatech.bffservice.dto.EmpleadoDTO;
 import cl.innovatech.bffservice.dto.NotificacionDTO;
 import cl.innovatech.bffservice.dto.ProyectoDTO;
@@ -272,5 +273,96 @@ public class BffService {
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<List<NotificacionDTO>>() {})
                 .block();
+    }
+
+    public List<AsignacionDTO> obtenerAsignacionesPorProyecto(Long proyectoId) {
+        List<AsignacionDTO> raw = webClient.get()
+                .uri(urlProyectos + "/asignaciones/proyecto/" + proyectoId)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<List<AsignacionDTO>>() {})
+                .block();
+        
+        if (raw != null) {
+            for (AsignacionDTO asig : raw) {
+                try {
+                    EmpleadoDTO emp = obtenerEmpleadoPorId(asig.getEmpleadoId());
+                    if (emp != null) {
+                        asig.setNombreEmpleado(emp.getNombre());
+                        asig.setCargoEmpleado(emp.getCargo());
+                    }
+                } catch (Exception e) {
+                    asig.setNombreEmpleado("Empleado no encontrado");
+                }
+            }
+        }
+        return raw;
+    }
+
+    private void sincronizarHorasEmpleado(Long empleadoId) {
+        try {
+            List<AsignacionDTO> asignaciones = webClient.get()
+                    .uri(urlProyectos + "/asignaciones/empleado/" + empleadoId)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<List<AsignacionDTO>>() {})
+                    .block();
+            
+            int totalHoras = 0;
+            if (asignaciones != null) {
+                totalHoras = asignaciones.stream()
+                        .mapToInt(AsignacionDTO::getHorasAsignadas)
+                        .sum();
+            }
+            
+            EmpleadoDTO emp = obtenerEmpleadoPorId(empleadoId);
+            if (emp != null) {
+                emp.setHorasAsignadas(totalHoras);
+                webClient.put()
+                        .uri(urlRecursos + "/" + empleadoId)
+                        .bodyValue(emp)
+                        .retrieve()
+                        .bodyToMono(EmpleadoDTO.class)
+                        .block();
+            }
+        } catch (Exception e) {
+            System.err.println("Error al sincronizar horas de empleado " + empleadoId + ": " + e.getMessage());
+        }
+    }
+
+    public AsignacionDTO crearAsignacion(AsignacionDTO asignacion) {
+        AsignacionDTO creada = webClient.post()
+                .uri(urlProyectos + "/asignaciones")
+                .bodyValue(asignacion)
+                .retrieve()
+                .bodyToMono(AsignacionDTO.class)
+                .block();
+        
+        if (creada != null) {
+            sincronizarHorasEmpleado(creada.getEmpleadoId());
+        }
+        return creada;
+    }
+
+    public AsignacionDTO actualizarAsignacion(Long id, AsignacionDTO asignacion) {
+        AsignacionDTO actualizada = webClient.put()
+                .uri(urlProyectos + "/asignaciones/" + id)
+                .bodyValue(asignacion)
+                .retrieve()
+                .bodyToMono(AsignacionDTO.class)
+                .block();
+        
+        if (actualizada != null) {
+            sincronizarHorasEmpleado(actualizada.getEmpleadoId());
+        }
+        return actualizada;
+    }
+
+    public void eliminarAsignacionPorProyectoYEmpleado(Long proyectoId, Long empleadoId) {
+        webClient.delete()
+                .uri(urlProyectos + "/asignaciones/proyecto/" + proyectoId + "/empleado/" + empleadoId)
+                .retrieve()
+                .toBodilessEntity()
+                .block();
+        
+        sincronizarHorasEmpleado(empleadoId);
     }
 }
