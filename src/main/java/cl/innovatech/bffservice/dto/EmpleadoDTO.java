@@ -9,6 +9,9 @@ import lombok.*;
 public class EmpleadoDTO {
     private Long id;
     private String nombre;
+    private String email;
     private String cargo;
-    private double capacity;
+    private Integer horasAsignadas;
+    private Integer capacidadMaxima;
+    private Double capacity;
 }

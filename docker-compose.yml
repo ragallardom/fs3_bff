@@ -19,6 +19,16 @@ services:
       timeout: 5s
       retries: 10
 
+  check-notifications:
+    image: alpine:latest
+    container_name: check-notifications
+    command: /bin/sh -c "while ! nc -z host.docker.internal 8083; do sleep 1; done; tail -f /dev/null"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z host.docker.internal 8083"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   bff-service:
     build: .
     container_name: innovatech-bff
@@ -27,10 +37,13 @@ services:
     environment:
       - URL_MS_RECURSOS=http://host.docker.internal:8081/api/rrhh/empleados
       - URL_MS_PROYECTOS=http://host.docker.internal:8082/api/proyectos
+      - URL_MS_NOTIFICATIONS=http://host.docker.internal:8083/api/notificaciones
     depends_on:
       check-rrhh:
         condition: service_healthy
       check-proyectos:
+        condition: service_healthy
+      check-notifications:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
